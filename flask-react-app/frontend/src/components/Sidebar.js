@@ -1,6 +1,5 @@
 import React from "react";
 import { Nav } from "react-bootstrap";
-// import { withRouter } from "react-router";
 import '../styles/Sidebar.css'
 
 const Sidebar = ({ setView }) => {   
