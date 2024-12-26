@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "react-bootstrap-icons": "^1.11.5",
+    "react-leaflet": "^5.0.0"
+  }
+}

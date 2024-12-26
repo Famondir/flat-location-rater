@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button } from 'react-bootstrap';
 
-const ExampleComponent = () => {
+const FlatDistanceOverview = () => {
+    const mapRef = useRef(null);
+    const latitude = 51.505;
+    const longitude = -0.09;
+
     const handleClick = () => {
         console.log('Button clicked!');
     };
@@ -16,4 +20,4 @@ const ExampleComponent = () => {
     );
 };
 
-export default ExampleComponent;
+export default FlatDistanceOverview;
