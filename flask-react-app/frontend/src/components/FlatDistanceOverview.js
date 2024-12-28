@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Card } from 'react-bootstrap';
 import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup, Pane } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Pane, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import hash from 'object-hash';
 
 L.Icon.Default.imagePath='img/'
 
-const FlatDistanceOverview = ({ mapData }) => {
+const FlatDistanceOverview = ({ mapData, geoData }) => {
     return (
         <div>
             <Card>
@@ -40,6 +41,7 @@ const FlatDistanceOverview = ({ mapData }) => {
                                     </Marker>
                                 )))}
                             </Pane>
+                            {<GeoJSON data={geoData} key={hash(geoData)} />}
                         </MapContainer>
                     </div>
                 </Card.Body>

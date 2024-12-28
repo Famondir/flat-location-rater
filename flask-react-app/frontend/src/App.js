@@ -18,18 +18,21 @@ function App() {
         poi_positions: {'Berliner Dom': {latitude: 52.5194, longitude: 13.4023}},
         flat_positions: {'Alexanderplatz': {latitude: 52.5219, longitude: 13.4133}}
     });
+    const [geoData, setGeoData] = useState(null);
 
     useEffect(() => {
         socket.emit('/api/connect');
 
         // Initial data fetch
         socket.emit('/api/get-map-data');
+        socket.emit('/api/get-geo-data');
 
         socket.on('map_data', (data) => {
             setMapData(data);
-            console.log('Map data received:', data);
-            console.log('Map data now:', mapData);
-            console.log(Object.entries(mapData.poi_positions).length > 0);
+        });
+
+        socket.on('geo_data', (data) => {
+            setGeoData(JSON.parse(data));
         });
 
     }, []);
@@ -39,7 +42,7 @@ function App() {
             case 'about':
                 return <About />;
             case 'flat-distance':
-                return <FlatDistanceOverview mapData={mapData} />;
+                return <FlatDistanceOverview mapData={mapData} geoData={geoData} />;
         };
     };
 
