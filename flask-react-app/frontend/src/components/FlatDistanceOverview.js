@@ -7,6 +7,13 @@ import hash from 'object-hash';
 
 L.Icon.Default.imagePath='img/'
 
+const onEachFeature = (feature, layer) => {
+    if (feature.properties && feature.properties.opacity) {
+        const { opacity } = feature.properties;
+        layer.setStyle({ fillOpacity: opacity });
+    }
+};
+
 const FlatDistanceOverview = ({ mapData, geoData }) => {
     return (
         <div>
@@ -29,19 +36,36 @@ const FlatDistanceOverview = ({ mapData, geoData }) => {
                                         <Popup>{name}</Popup>
                                     </Marker>
                                 )))}
-                            <Pane name="flatMarkerPane">
+                            <Pane name="flatMarkerPane"></Pane>
+                            <Pane name="flatAreaMarkerPane"></Pane>
                             {mapData.flat_positions && Object.entries(mapData.flat_positions).length > 0 && (
-                                Object.entries(mapData.flat_positions).map(([name, coords]) => (
-                                    <Marker className='red-marker'
-                                        key={`flat-${name}`} 
-                                        position={[coords.latitude, coords.longitude]}
-                                        pane='flatMarkerPane'
-                                    >
-                                        <Popup>{name}</Popup>
-                                    </Marker>
-                                )))}
-                            </Pane>
-                            {<GeoJSON data={geoData} key={hash(geoData)} />}
+                                Object.entries(mapData.flat_positions).map(([name, param]) => (
+                                    param.is_point && (
+                                        <Marker
+                                            key={`flat-${name}`} 
+                                            position={[param.latitude, param.longitude]}
+                                            pane='flatMarkerPane'
+                                        >
+                                            <Popup>{name}</Popup>
+                                        </Marker>
+                            ))))}                          
+                            {mapData.flat_positions && Object.entries(mapData.flat_positions).length > 0 && (
+                                Object.entries(mapData.flat_positions).map(([name, param]) => (
+                                    !param.is_point && (
+                                        <Marker
+                                            key={`flat-${name}`} 
+                                            position={[param.latitude, param.longitude]}
+                                            pane='flatAreaMarkerPane'
+                                        >
+                                            <Popup>{name}</Popup>
+                                        </Marker>
+                            ))))}
+                            {<GeoJSON 
+                                data={geoData} 
+                                key={hash(geoData)} 
+                                style={{fillColor: "red"}} 
+                                onEachFeature={onEachFeature} 
+                                />}
                         </MapContainer>
                     </div>
                 </Card.Body>

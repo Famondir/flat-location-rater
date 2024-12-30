@@ -29,10 +29,11 @@ function App() {
 
         socket.on('map_data', (data) => {
             setMapData(data);
+            console.log(data);
         });
 
         socket.on('geo_data', (data) => {
-            setGeoData(JSON.parse(data));
+            setGeoData(data);
         });
 
     }, []);

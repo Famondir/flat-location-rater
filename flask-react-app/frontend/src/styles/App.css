@@ -7,7 +7,13 @@
 .leaflet-flatMarker-pane img.leaflet-marker-icon{
     filter: hue-rotate(155deg);
 }
-
 .leaflet-flatMarker-pane {
+    z-index: 600;
+}
+
+.leaflet-flatAreaMarker-pane img.leaflet-marker-icon{
+    filter: hue-rotate(-110deg);
+}
+.leaflet-flatAreaMarker-pane {
     z-index: 600;
 }

@@ -35,3 +35,14 @@ This should help to rate flats regarding the travel time one would face based on
 #### 26-12-24
 
 * asynch url requests to reduce calculation time
+* added leaflet map to app
+  * showing markers with different color
+  * showing regions as polygons
+
+#### 28-12-24
+
+* getting coordinagtes and geojson from Nominatim
+* passing correct geojson
+* regions can have fill opacity now given via properties
+
+#### 29-12-24
