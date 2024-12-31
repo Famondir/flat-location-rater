@@ -1,31 +1,32 @@
 import asyncio
+from pprint import pprint
 from aiohttp import ClientSession
-import json
 import time
 
-async def hello(url: str, queue: asyncio.Queue):
-    async with ClientSession() as session:
-        async with session.get(url) as response:
-            result = {"response": await response.text(), "url": url}
-            await queue.put(result)
+class AsyncRequest:
+    def __init__(self, urls: list):
+        self.urls = urls
+        self.queue = asyncio.Queue()
+        self.results = []
+        
+    async def send_request(self, url):
+        async with ClientSession() as session:
+            async with session.get(url) as response:
+                result = {"response": await response.text(), "url": url}
+                await self.queue.put(result)
 
+    async def get_requests(self):       
+        async with asyncio.TaskGroup() as group:
+            for url in self.urls:
+                group.create_task(self.send_request(url))
 
-async def main():
-    # I'm using test server localhost, but you can use any url
-    url = "https://v6.bvg.transport.rest/journeys?from.latitude=52.543333&from.longitude=13.351686&from.address=12623+Berlin&to=900014101&departure=tomorrow+2pm&results=1"
-    results = []
-    queue = asyncio.Queue()
-    async with asyncio.TaskGroup() as group:
-        for i in range(130):
-            group.create_task(hello(url, queue))
-
-    while not queue.empty():
-        results.append(await queue.get())
-    
-    # print(json.dumps(results))
+        while not self.queue.empty():
+            self.results.append(await self.queue.get())
 
 if __name__ == "__main__":
     start = time.time()
-    asyncio.run(main())
+    async_request = AsyncRequest(["https://v6.bvg.transport.rest/journeys?from.latitude=52.543333&from.longitude=13.351686&from.address=ATZE+Musiktheater&to=900014101&departure=tomorrow+2pm&results=1"])
+    asyncio.run(async_request.get_requests())
     end = time.time()
     print(end - start)
+    pprint(async_request.results)

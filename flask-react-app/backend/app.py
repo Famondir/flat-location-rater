@@ -55,8 +55,8 @@ def get_coordinates(data):
                 address = {'postalcode': value['plz'], 'country': 'Germany'}
                 data[key]['is_point'] = False
             
-            location = geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=False)
-            
+            location = [geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
+
             data[key]['latitude'] = location[0].latitude
             data[key]['longitude'] = location[0].longitude
             if 'street' in value and 'streetnumber' not in value and 'plz' in value:
@@ -85,18 +85,8 @@ def handle_connect():
 @socketio.on('/api/get-geo-data')
 def get_geo_data():
     print('GET /api/get-geo-data')
-    postcodes = set()
-
-    for flat, value in MAP_DATA['flat_positions'].items():
-        if not value['is_point']:
-            postcodes.add(value['plz'])
-
-    sim_geo = gpd.GeoSeries(GEO_GEO_DATA_PLZ.query('plz in @postcodes')['geometry']).simplify(tolerance=0.001)
+    
     geos = []
-    """
-    for geo in sim_geo:
-        geos.append({"type": "Feature", "properties": {"opacity": random.random()}, "geometry": geo.__geo_interface__})
-    """
     for flat, value in MAP_DATA['flat_positions'].items():
         if not value['is_point']:
             for geo in value['geojson']:
@@ -107,10 +97,17 @@ def get_geo_data():
 
     feature_collection = {"type": "FeatureCollection", "features": geos}
     socketio.emit('geo_data', feature_collection)
-    # socketio.emit('geo_data', sim_geo.iloc[0].__geo_interface__)
-    # hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in h3.geo_to_cells(sim_geo.iloc[0], res=9)]
-    # feature_collection = {"type": "FeatureCollection", "features": hexes}
-    # socketio.emit('geo_data', feature_collection)
+
+    """ postcodes = set()
+    for flat, value in MAP_DATA['flat_positions'].items():
+        if not value['is_point']:
+            postcodes.add(value['plz'])
+    sim_geo = gpd.GeoSeries(GEO_GEO_DATA_PLZ.query('plz in @postcodes')['geometry']).simplify(tolerance=0.001)
+    socketio.emit('geo_data', sim_geo.iloc[0].__geo_interface__) """
+
+    """ hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in h3.geo_to_cells(sim_geo.iloc[0], res=9)]
+    feature_collection = {"type": "FeatureCollection", "features": hexes}
+    socketio.emit('geo_data', feature_collection) """
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
