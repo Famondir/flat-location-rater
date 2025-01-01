@@ -87,9 +87,15 @@ class GeoDataHandler:
                 data[key]['latitude'] = location[0].latitude
                 data[key]['longitude'] = location[0].longitude
                 if 'street' in value and 'streetnumber' not in value and 'plz' in value:
-                    data[key]['geojson'] = self.get_street_geometry(value['street'], value['plz'])
+                    geo = self.get_street_geometry(value['street'], value['plz'])
+                    data[key]['geojson'] = geo
+                    data[key]['geojson_hex'] = self.get_hexes_for_streets(shape(geo[0]))
+                    data[key]['geojson_hex_coordinates'] = [h3.cell_to_latlng(hex) for hex in data[key]['geojson_hex']]
                 elif 'street' not in value and 'plz' in value:
-                    data[key]['geojson'] = [self.GEO_DATA_PLZ.query('plz == @value["plz"]')['geometry'].iloc[0].__geo_interface__]
+                    geo = self.GEO_DATA_PLZ.query('plz == @value["plz"]')['geometry'].iloc[0].__geo_interface__
+                    data[key]['geojson'] = [geo]
+                    data[key]['geojson_hex'] = h3.geo_to_cells(geo, res=9)
+                    data[key]['geojson_hex_coordinates'] = [h3.cell_to_latlng(hex) for hex in data[key]['geojson_hex']]
                 else:
                     data[key]['geojson'] = [loc.raw['geojson'] for loc in location]
         return data
@@ -98,9 +104,12 @@ class GeoDataHandler:
         return self.MAP_DATA
     
     def get_travel_time(self):
-        flats = pd.DataFrame.from_dict(self.MAP_DATA['flat_positions'], orient='index')
-        poi = pd.DataFrame.from_dict(self.MAP_DATA['poi_positions'], orient='index')
-        fxp = pd.merge(flats.reset_index().rename(columns={"index": "flat"}), poi.reset_index().rename(columns={"index": "poi"}), how="cross")
+        flats = pd.DataFrame.from_dict(self.MAP_DATA['flat_positions'], orient='index').\
+            reset_index().rename(columns={"index": "flat"}).\
+                explode(['geojson_hex', 'geojson_hex_coordinates']).\
+                    assign(latitude = lambda x: np.where(x.geojson_hex_coordinates.isnull(), x.latitude, x.geojson_hex_coordinates.str[0]), longitude = lambda x: np.where(x.geojson_hex_coordinates.isnull(), x.longitude, x.geojson_hex_coordinates.str[1]))
+        poi = pd.DataFrame.from_dict(self.MAP_DATA['poi_positions'], orient='index').reset_index().rename(columns={"index": "poi"})
+        fxp = pd.merge(flats, poi, how="cross")
         df_routes = pd.DataFrame.from_dict(self.ROUTE_DATA, orient='index')
         df_url = pd.merge(fxp, df_routes, on="poi").astype(str).assign(
             url = lambda x: "https://v6.bvg.transport.rest/journeys?from.latitude="+np.where(x.direction == "to", ""+x.latitude_x, ""+x.latitude_y)+"&from.longitude="+np.where(x.direction == "to", x.longitude_x, x.longitude_y)+"&from.address="+x.flat+"&to.latitude="+np.where(x.direction == "to", x.latitude_y, x.latitude_x)+"&to.longitude="+np.where(x.direction == "to", x.longitude_y, x.longitude_x)+"&to.address="+x.poi+"&"+np.where(x.direction == "to", "arrival=next+"+x.day+"+"+x.time,"departure=next+"+x.day+"+"+x.time)+"&results=1"
@@ -122,6 +131,7 @@ class GeoDataHandler:
             self.store_travel_time(async_request.results)
 
         df_travel_times = df_url.merge(self.retrieve_stored_travel_time(), on='url')
+        # print(df_travel_times.query('flat == "Flat 2"'))
 
         return(df_travel_times)
     
@@ -158,7 +168,7 @@ class GeoDataHandler:
                     if geo['type'] == 'Polygon':
                         if 'street' not in value and 'plz' in value:
                             if value['plz'] not in postcodes:
-                                hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in h3.geo_to_cells(geo, res=9)]
+                                hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in value['geojson_hex']]
                                 for hex in hexes:
                                     geos.append(hex)
                                 postcodes.add(value['plz'])
@@ -166,8 +176,7 @@ class GeoDataHandler:
                             print('WARNING: Should this be reached?')
                             geos.append({"type": "Feature", "properties": {"opacity": random.random()}, "geometry": geo})
                     elif geo['type'] in ['LineString', 'MultiLineString']:
-                        print(geo)
-                        hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in self.get_hexes_for_streets(shape(geo))]
+                        hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in value['geojson_hex']]
                         for hex in hexes:
                             geos.append(hex)
 
@@ -218,7 +227,14 @@ class GeoDataHandler:
             with closing(connection.cursor()) as cursor:
                 for request in request_results:
                     data = json.loads(request['response'])
-                    travel_time = datetime.fromisoformat(jmespath.search('journeys[0].legs[-1].arrival', data))-datetime.fromisoformat(jmespath.search('journeys[0].legs[0].departure', data))
-                    cursor.execute(f"INSERT INTO {self.table_name} (url, seconds) VALUES (?, ?)", (request['url'], travel_time.total_seconds()))
+
+                    arrival = jmespath.search('journeys[0].legs[-1].arrival', data)
+                    departure = jmespath.search('journeys[0].legs[0].departure', data)
+                    
+                    if arrival is not None:
+                        travel_time = datetime.fromisoformat(arrival)-datetime.fromisoformat(departure)
+                        cursor.execute(f"INSERT INTO {self.table_name} (url, seconds) VALUES (?, ?)", (request['url'], travel_time.total_seconds()))
+                    else:
+                        print(request['url'])
                 
                 connection.commit()
