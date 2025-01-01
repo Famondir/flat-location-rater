@@ -1,4 +1,3 @@
-import random
 from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
 from geo_data_handler import GeoDataHandler
@@ -25,7 +24,13 @@ def get_map_data():
 @socketio.on('/api/get-geo-data')
 def get_geo_data():
     print('GET /api/get-geo-data')
-    feature_collection = GEO_DATA.get_geojson()
+    feature_collection = GEO_DATA.get_hex_geojson()
+    socketio.emit('geo_data', feature_collection)
+
+@socketio.on('/api/get-hex-geo-data')
+def get_geo_data():
+    print('GET /api/get-hex-geo-data')
+    feature_collection = GEO_DATA.get_hex_geojson()
     socketio.emit('geo_data', feature_collection)
 
 if __name__ == '__main__':

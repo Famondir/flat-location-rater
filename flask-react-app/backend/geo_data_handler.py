@@ -1,8 +1,7 @@
 from datetime import datetime
 import random
-import time
 import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString, Polygon, shape
 import h3
 from geopy.geocoders import Nominatim
 import pandas as pd
@@ -149,17 +148,43 @@ class GeoDataHandler:
 
         feature_collection = {"type": "FeatureCollection", "features": geos}
         return(feature_collection)
-
-        """ 
-        for flat, value in MAP_DATA['flat_positions'].items():
+    
+    def get_hex_geojson(self):
+        postcodes = set()
+        geos = []
+        for flat, value in self.MAP_DATA['flat_positions'].items():
             if not value['is_point']:
-                postcodes.add(value['plz'])
-        sim_geo = gpd.GeoSeries(GEO_GEO_DATA_PLZ.query('plz in @postcodes')['geometry']).simplify(tolerance=0.001)
-        socketio.emit('geo_data', sim_geo.iloc[0].__geo_interface__) """
+                for geo in value['geojson']:
+                    if geo['type'] == 'Polygon':
+                        if 'street' not in value and 'plz' in value:
+                            if value['plz'] not in postcodes:
+                                hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in h3.geo_to_cells(geo, res=9)]
+                                for hex in hexes:
+                                    geos.append(hex)
+                                postcodes.add(value['plz'])
+                        else:
+                            print('WARNING: Should this be reached?')
+                            geos.append({"type": "Feature", "properties": {"opacity": random.random()}, "geometry": geo})
+                    elif geo['type'] in ['LineString', 'MultiLineString']:
+                        print(geo)
+                        hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in self.get_hexes_for_streets(shape(geo))]
+                        for hex in hexes:
+                            geos.append(hex)
 
-        """ hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in h3.geo_to_cells(sim_geo.iloc[0], res=9)]
-        feature_collection = {"type": "FeatureCollection", "features": hexes}
-        socketio.emit('geo_data', feature_collection) """
+        feature_collection = {"type": "FeatureCollection", "features": geos}
+        return(feature_collection)
+
+    def get_hexes_for_streets(self, multiline, buffer_distance=0.0003, resolution=11):
+        def multilinestring_to_polygon(multiline, buffer_distance=0.0005):
+            # Create buffer around the multilinestring
+            buffered = multiline.buffer(buffer_distance)
+
+            # Ensure it's a polygon and simplify
+            polygon = Polygon(buffered.exterior)
+            simplified = polygon.simplify(tolerance=0.0001)
+            return simplified
+
+        return h3.geo_to_cells(multilinestring_to_polygon(multiline, buffer_distance), res = resolution)
 
     def initiate_database(self):
         # Connect to the SQLite database (creates it if it doesn't exist)
