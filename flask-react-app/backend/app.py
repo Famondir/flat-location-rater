@@ -29,10 +29,10 @@ def get_geo_data():
     socketio.emit('geo_data', feature_collection)
 
 @socketio.on('/api/get-hex-geo-data')
-def get_geo_data():
+def get_geo_data(flat):
     print('GET /api/get-hex-geo-data')
-    feature_collection = GEO_DATA.get_hex_geojson()
-    socketio.emit('geo_data', feature_collection)
+    feature_collection = GEO_DATA.get_hex_geojson(flat)
+    socketio.emit('hex_geo_data', feature_collection)
 
 @socketio.on('/api/get-opnv-data')
 def get_opnv_data():

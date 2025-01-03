@@ -17,3 +17,14 @@
 .leaflet-flatAreaMarker-pane {
     z-index: 600;
 }
+
+.almost-fullscreen-modal>.modal-dialog{
+    --bs-modal-width: 95%;
+    --bs-modal-height: 95%;
+}
+
+@media (min-width: 1400px) {
+    .almost-fullscreen-modal>.modal-dialog, .modal-xl {
+        --bs-modal-width: 1340px;
+    }
+}

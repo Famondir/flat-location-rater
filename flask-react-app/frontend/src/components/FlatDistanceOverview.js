@@ -1,39 +1,66 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Button, Card, Row, Col, CardHeader } from 'react-bootstrap';
+import { Button, Card, Row, Col, CardHeader, CardText } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, Pane, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import hash from 'object-hash';
+import FlatDetailModal from './FlatDetailModal';
+import { formatSeconds } from './FormatSeconds';
 
 L.Icon.Default.imagePath='img/'
 
-const onEachFeature = (feature, layer) => {
-    if (feature.properties && feature.properties.opacity) {
-        const { opacity } = feature.properties;
-        layer.setStyle({ fillOpacity: opacity });
-    }
-};
-
-const formatSeconds = (seconds) => {
-    if (seconds !== 0) {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        return `${hours} h ${minutes} min`;
-    }
-    
-    return NaN;
-};
-
-const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) => {
-    console.log(travelTimeData)
+const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData }) => {
+    const [showModal, setShowModal] = useState(false);
+    const [selectedFlatData, setSelectedFlatData] = useState(null);
+    const [selectedFlat, setSelectedFlat] = useState(null);
+    const [hoveredFlat, setHoveredFlat] = useState(null);
+    const markersRef = useRef({});
 
     const customStyles = {
+        rows: {
+            style: {
+                cursor: 'pointer',
+            },
+            highlightOnHoverStyle: {
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            }
+        },
         headCells: {
             style: {
                 fontWeight: 'bold',
             },
         },
+    };
+
+    const handleMarkerClick = (flatName) => {
+        setSelectedFlat(flatName);
+    };
+
+    const handlePopupClose = () => {
+        setSelectedFlat(null);
+    };
+
+    const handleRowMouseEnter = (row) => {
+        if (row && markersRef.current[row.flat]) {
+            markersRef.current[row.flat].openPopup();
+            setHoveredFlat(row.flat);
+        }
+    };
+
+    const handleRowMouseLeave = (row) => {
+        if (row && markersRef.current[row.flat]) {
+            markersRef.current[row.flat].closePopup();
+            setHoveredFlat(null);
+        }
+    };
+
+    const handleRowClick = row => {
+        setSelectedFlatData({
+            name: row.flat,
+            ...mapData.flat_positions[row.flat]
+        });
+        setShowModal(true);
     };
 
     const columns = [{
@@ -42,7 +69,7 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
         sortable: true
     },
     {
-        name: 'Median Travel Time',
+        name: 'Median',
         selector: row => row.median,
         sortable: true,
         format: row => formatSeconds(row.median)
@@ -57,8 +84,37 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
     return (
         <div>
             <Row>
-                <Col xl={6}>
-                    <Card>
+                {aggTravelTimeData && (<Col xl={4}>
+                    <Card className='mb-3'>
+                        <CardHeader>
+                            <Card.Title>Weekly Travel Time</Card.Title>
+                        </CardHeader>
+                        <Card.Body>
+                        <DataTable
+                            columns={columns}
+                            data={aggTravelTimeData}
+                            pagination
+                            highlightOnHover
+                            responsive
+                            customStyles={customStyles}
+                            onRowMouseEnter={handleRowMouseEnter}
+                            onRowMouseLeave={handleRowMouseLeave}
+                            onRowClicked={handleRowClick}
+                            conditionalRowStyles={[
+                                {
+                                    when: row => row.flat === selectedFlat,
+                                    style: {
+                                        backgroundColor: 'rgba(26, 132, 214, 0.2)',
+                                    },
+                                },
+                            ]}
+                        />
+                        <CardText className='text-muted'>If the location of the flat is known without uncertainty (street name and number are available) there is no uncertainty about the weekly travel time. Thus the standard deviation of the median is neither available nor needed. One could think of it to be equal zero.</CardText>
+                        </Card.Body>
+                    </Card>
+                </Col>)}
+                <Col xl={8}>
+                    <Card className='mb-3'>
                         <CardHeader>
                             <Card.Title>Flat Distance Overview</Card.Title>
                         </CardHeader>
@@ -85,9 +141,16 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
                                         Object.entries(mapData.flat_positions).map(([name, param]) => (
                                             param.is_point && (
                                                 <Marker
-                                                    key={`flat-${name}`} 
+                                                    key={name} 
                                                     position={[param.latitude, param.longitude]}
                                                     pane='flatMarkerPane'
+                                                    ref={(ref) => {
+                                                        if (ref) markersRef.current[name] = ref;
+                                                    }}
+                                                    eventHandlers={{
+                                                        click: () => handleMarkerClick(name),
+                                                        popupclose: handlePopupClose
+                                                    }}
                                                 >
                                                     <Popup>{name}</Popup>
                                                 </Marker>
@@ -95,10 +158,17 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
                                     {mapData.flat_positions && Object.entries(mapData.flat_positions).length > 0 && (
                                         Object.entries(mapData.flat_positions).map(([name, param]) => (
                                             !param.is_point && (
-                                                <Marker
-                                                    key={`flat-${name}`} 
+                                                <Marker 
+                                                    key={name}
                                                     position={[param.latitude, param.longitude]}
                                                     pane='flatAreaMarkerPane'
+                                                    ref={(ref) => {
+                                                        if (ref) markersRef.current[name] = ref;
+                                                    }}
+                                                    eventHandlers={{
+                                                        click: () => handleMarkerClick(name),
+                                                        popupclose: handlePopupClose
+                                                    }}
                                                 >
                                                     <Popup>{name}</Popup>
                                                 </Marker>
@@ -116,32 +186,20 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
                                     {<GeoJSON 
                                         data={geoData} 
                                         key={hash(geoData)} 
-                                        style={{fillColor: "red"}} 
-                                        onEachFeature={onEachFeature} 
+                                        style={{fillColor: "lightgreen"}} 
+                                        pathOptions={{color:'green'}}
                                         />}
                                 </MapContainer>
                             </div>
                         </Card.Body>
                     </Card>
                 </Col>
-                {travelTimeData && (<Col xl={6}>
-                    <Card>
-                        <CardHeader>
-                            <Card.Title>Flat Distance Overview</Card.Title>
-                        </CardHeader>
-                        <Card.Body>
-                        <DataTable
-                            columns={columns}
-                            data={travelTimeData}
-                            pagination
-                            highlightOnHover
-                            responsive
-                            customStyles={customStyles}
-                        />
-                        </Card.Body>
-                    </Card>
-                </Col>)}
             </Row>
+            {showModal && (<FlatDetailModal
+                show={showModal}
+                onHide={() => setShowModal(false)}
+                flatData={selectedFlatData}
+            />)}
         </div>
         
     );

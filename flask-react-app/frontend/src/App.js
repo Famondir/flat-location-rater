@@ -1,5 +1,5 @@
+import {socket} from "./components/socket";
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Container, Navbar, Nav, Row, Col } from 'react-bootstrap';
 import FlatDistanceOverview from './components/FlatDistanceOverview';
@@ -7,8 +7,6 @@ import Sidebar from './components/Sidebar';
 import { Map } from 'react-bootstrap-icons';
 import About from './components/About';
 import './styles/App.css';
-
-const socket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000'); // Backend URL
 
 function App() {
     const [view, setView] = useState('flat-distance');
@@ -56,10 +54,11 @@ function App() {
                 return <About />;
             case 'flat-distance':
                 return <FlatDistanceOverview 
+                    socket = {socket}
                     mapData={mapData} 
                     geoData={geoData} 
                     opnvData= {opnvData}
-                    travelTimeData={aggTravelTimeData}  
+                    aggTravelTimeData={aggTravelTimeData}  
                 />;
         };
     };

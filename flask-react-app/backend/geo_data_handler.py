@@ -213,16 +213,16 @@ class GeoDataHandler:
         feature_collection = {"type": "FeatureCollection", "features": geos}
         return(feature_collection)
     
-    def get_hex_geojson(self):
+    def get_hex_geojson(self, flat):
         postcodes = set()
         geos = []
 
         df = self.TRAVEL_TIME_DATA[self.TRAVEL_TIME_DATA['is_point'] == 'False']
-        df = df.groupby('geojson_hex').agg({'seconds': 'sum'}).reset_index()
+        df = df.query('flat == @flat["flat"]').groupby('geojson_hex').agg({'seconds': 'sum'}).reset_index()
         min, max = df.agg({'seconds': ['min', 'max']})['seconds']
 
         for idx, row in df.iterrows():
-            feature = {"type": "Feature", "properties": {"opacity": (row['seconds']-min)/(max-min)}, "geometry": h3.cells_to_geo([row['geojson_hex']])}
+            feature = {"type": "Feature", "properties": {"scale": 1-(row['seconds']-min)/(max-min)*0.9999, "travelTime": row['seconds']}, "geometry": h3.cells_to_geo([row['geojson_hex']])}
             geos.append(feature)
 
         feature_collection = {"type": "FeatureCollection", "features": geos}
