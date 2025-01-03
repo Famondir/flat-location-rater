@@ -180,11 +180,17 @@ class GeoDataHandler:
         return(df_travel_times)
     
     def get_aggregated_travel_time(self):
-        df = self.TRAVEL_TIME_DATA.groupby(['flat', 'geojson_hex'], as_index=False).agg({'seconds': ['sum']})
-        df.columns = np.where(df.columns.get_level_values(1) != '', df.columns.get_level_values(1), df.columns.get_level_values(0))
-        # df = df.groupby('flat', as_index=False).agg({'sum': ['median', 'std']})
-        # df.columns = np.where(df.columns.get_level_values(1) != '', df.columns.get_level_values(1), df.columns.get_level_values(0))
-        print(df)
+        df = (
+            self.TRAVEL_TIME_DATA
+            .groupby(['flat', 'geojson_hex'], as_index=False)
+            .agg({'seconds': ['sum']})
+            .pipe(lambda x: x.set_axis(['flat', 'geojson_hex', 'sum'], axis=1))
+            .groupby('flat', as_index=False)
+            .agg({'sum': ['median', 'std']})
+            .pipe(lambda x: x.set_axis(['flat', 'median', 'std'], axis=1))
+            .pipe(lambda x: x.sort_values('median', ascending=True))
+            .fillna(0)
+        )
         return(df.to_dict(orient='records'))
     
     def get_geojson(self):

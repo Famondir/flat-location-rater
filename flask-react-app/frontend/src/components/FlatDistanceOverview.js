@@ -15,8 +15,18 @@ const onEachFeature = (feature, layer) => {
     }
 };
 
+const formatSeconds = (seconds) => {
+    if (seconds !== 0) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        return `${hours} h ${minutes} min`;
+    }
+    
+    return NaN;
+};
+
 const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) => {
-    // console.log(travelTimeData)
+    console.log(travelTimeData)
 
     const customStyles = {
         headCells: {
@@ -32,12 +42,6 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
         sortable: true
     },
     {
-        name: 'Travel Time Sum',
-        selector: row => row.sum,
-        sortable: true,
-        format: row => formatSeconds(row.sum)
-    },
-    {
         name: 'Median Travel Time',
         selector: row => row.median,
         sortable: true,
@@ -49,12 +53,6 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, travelTimeData }) =>
         sortable: true,
         format: row => formatSeconds(row.std)
     }];
-
-    const formatSeconds = (seconds) => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-        return `${hours}h ${minutes}min`;
-    };
 
     return (
         <div>

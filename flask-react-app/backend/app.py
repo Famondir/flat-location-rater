@@ -7,6 +7,7 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 GEO_DATA = GeoDataHandler()
+print(GEO_DATA.get_aggregated_travel_time())
 
 @app.route('/')
 def index():
