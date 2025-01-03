@@ -56,3 +56,14 @@ This should help to rate flats regarding the travel time one would face based on
 #### 1-1-25
 
 * storing data in database for preventing requesting same urls multiple times
+
+#### 2-1-25
+
+* adding overview table about traveltimes
+
+#### 3-1-25
+
+* fixing problem with nan values for travel time data transmission
+* linked table and map for hover and click
+* added modal to show details for single flats (with hex polygons)
+* added project description with images
