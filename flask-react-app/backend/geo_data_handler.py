@@ -1,10 +1,7 @@
 from datetime import datetime
 import random
 import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString, Polygon, shape, Point
-from functools import partial
-from shapely.ops import transform
-import pyproj
+from shapely.geometry import MultiLineString, Polygon, shape
 import h3
 from geopy.geocoders import Nominatim
 import pandas as pd
@@ -188,7 +185,7 @@ class GeoDataHandler:
             .groupby('flat', as_index=False)
             .agg({'sum': ['median', 'std']})
             .pipe(lambda x: x.set_axis(['flat', 'median', 'std'], axis=1))
-            .pipe(lambda x: x.sort_values('median', ascending=True))
+            # .pipe(lambda x: x.sort_values('median', ascending=True))
             .fillna(0)
         )
         return(df.to_dict(orient='records'))
@@ -222,7 +219,7 @@ class GeoDataHandler:
         min, max = df.agg({'seconds': ['min', 'max']})['seconds']
 
         for idx, row in df.iterrows():
-            feature = {"type": "Feature", "properties": {"scale": 1-(row['seconds']-min)/(max-min)*0.9999, "travelTime": row['seconds']}, "geometry": h3.cells_to_geo([row['geojson_hex']])}
+            feature = {"type": "Feature", "properties": {"scale": 1-(row['seconds']-min)/(max-min)*0.9999, "travelTime": row['seconds'], "hex": row['geojson_hex']}, "geometry": h3.cells_to_geo([row['geojson_hex']])}
             geos.append(feature)
 
         feature_collection = {"type": "FeatureCollection", "features": geos}

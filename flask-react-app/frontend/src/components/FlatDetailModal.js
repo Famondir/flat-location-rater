@@ -1,5 +1,5 @@
 import {socket} from "./socket";
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Modal, Row, Col, Card, CardHeader } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
@@ -9,32 +9,62 @@ import { formatSeconds } from './FormatSeconds';
 import { interpolateRdYlGn } from 'd3-scale-chromatic';
 // import 'leaflet/dist/leaflet.css';
 
-const onEachFeature = (feature, layer) => {
-    if (feature.properties && feature.properties.scale) {
-        const { scale } = feature.properties;
-        const color = interpolateRdYlGn(scale);
-
-        layer.setStyle({ 
-            fillColor: color,
-            fillOpacity: 0.5
-        });
-
-    }
-
-    if (feature.properties.travelTime) {
-        layer.bindPopup(`Weekly Travel Time: ${formatSeconds(feature.properties.travelTime)}`);
-    }
-};
-
 const FlatDetailModal = ({ show, onHide, flatData }) => {
     const [travelTimeData, setTravelTimeData] = useState(null);
     const [hexGeoData, setHexGeoData] = useState(null);
     const defaultCenter = flatData ? [flatData?.latitude, flatData?.longitude] : [52.5200, 13.4050]; // Berlin center
     const defaultZoom = 15;
+    const [hoveredHexId, setHoveredHexId] = useState(null);
+    const layerRefs = useRef({});
+
+    const onEachFeature = (feature, layer) => {
+        // Store reference to layer
+        layerRefs.current[feature.properties.hex] = layer;
+
+        layer.on({
+            mouseover: () => {
+                layer.openPopup();
+                setHoveredHexId(feature.properties.hex);
+            },
+            mouseout: () => {
+                layer.closePopup();
+                setHoveredHexId(null);
+            }
+        });
+    
+        if (feature.properties && feature.properties.scale) {
+            const { scale } = feature.properties;
+            const color = interpolateRdYlGn(scale);
+    
+            layer.setStyle({ 
+                fillColor: color,
+                fillOpacity: 0.5
+            });
+    
+        }
+    
+        if (feature.properties.travelTime) {
+            layer.bindPopup(`Weekly Travel Time: ${formatSeconds(feature.properties.travelTime)}`);
+        }
+    };
+
+    const customStyles = {
+        rows: {
+            style: {
+                cursor: 'pointer',
+            },
+            highlightOnHoverStyle: {
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+            }
+        },
+        headCells: {
+            style: {
+                fontWeight: 'bold',
+            },
+        },
+    };
 
     useEffect(() => {
-        
-
         socket.emit('/api/get-hex-geo-data', {flat: flatData?.name});
 
         socket.on('hex_geo_data', (data) => {
@@ -42,16 +72,28 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
                 });
      }, []);
 
+     useEffect(() => {
+        if (hexGeoData && hexGeoData.features) {
+            const transformedData = hexGeoData.features.map(feature => ({
+                hex_id: feature.properties.hex,
+                travelTime: feature.properties.travelTime
+            }))
+            .sort((a, b) => a.travelTime - b.travelTime);
+            setTravelTimeData(transformedData);
+        }
+    }, [hexGeoData]);
+
     const columns = [
         {
-            name: 'Route',
-            selector: row => row.route,
-            sortable: true
+            name: 'Hex ID',
+            selector: row => row.hex_id,
+            sortable: false
         },
         {
             name: 'Travel Time',
             selector: row => row.travelTime,
-            sortable: true
+            sortable: true,
+            format: row => formatSeconds(row.travelTime)
         }
     ];
 
@@ -76,6 +118,22 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
         }
     };
 
+    const handleRowMouseEnter = (row) => {
+        const layer = layerRefs.current[row.hex_id];
+        if (layer) {
+            layer.openPopup();
+        }
+        setHoveredHexId(row.hex_id);
+    };
+
+    const handleRowMouseLeave = (row) => {
+        const layer = layerRefs.current[row.hex_id];
+        if (layer) {
+            layer.closePopup();
+        }
+        setHoveredHexId(null);
+    };
+
     return (
         <Modal show={show} onHide={onHide} size="xl" centered className='almost-fullscreen-modal'>
             <Modal.Header closeButton>
@@ -91,8 +149,21 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
                                     columns={columns}
                                     data={travelTimeData}
                                     pagination
+                                    paginationPerPage={5}
+                                    paginationRowsPerPageOptions={[5,10]}
                                     highlightOnHover
                                     responsive
+                                    customStyles={customStyles}
+                                    onRowMouseEnter={handleRowMouseEnter}
+                                    onRowMouseLeave={handleRowMouseLeave}
+                                    conditionalRowStyles={[
+                                        {
+                                            when: row => row.hex_id === hoveredHexId,
+                                            style: {
+                                                backgroundColor: 'rgba(26, 132, 214, 0.2)',
+                                            },
+                                        },
+                                    ]}
                                 />)}
                             </Card.Body>
                         </Card>

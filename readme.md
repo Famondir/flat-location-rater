@@ -27,3 +27,5 @@ For deployment one only has to host a flask server after one builds the one page
 ## Possible extensions
 
 * add support for routing with car, bike or per pedes
+* guess location of flat based on description text for flats by identifying distance relations to e.g. grocery or public transport stations
+* show isochrones for poi so one maight can see faster what can be a good spot for a flat?

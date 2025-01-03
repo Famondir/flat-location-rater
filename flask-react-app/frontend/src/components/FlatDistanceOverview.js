@@ -94,6 +94,8 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
                             columns={columns}
                             data={aggTravelTimeData}
                             pagination
+                            paginationPerPage={5}
+                            paginationRowsPerPageOptions={[5,10]}
                             highlightOnHover
                             responsive
                             customStyles={customStyles}
