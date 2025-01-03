@@ -13,10 +13,12 @@
     "react": "^19.0.0",
     "react-bootstrap": "^2.10.7",
     "react-bootstrap-icons": "^1.11.5",
+    "react-data-table-component": "^7.6.2",
     "react-dom": "^19.0.0",
     "react-leaflet": "^5.0.0",
     "react-scripts": "5.0.1",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "styled-components": "^6.1.13"
   },
   "eslintConfig": {
     "extends": [

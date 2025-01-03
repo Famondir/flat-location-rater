@@ -46,3 +46,13 @@ This should help to rate flats regarding the travel time one would face based on
 * regions can have fill opacity now given via properties
 
 #### 29-12-24
+
+* trying to gret better street shapes; nominatim does not return complete onres
+
+#### 30-12-24
+
+* getting better street shapes from local dataset
+
+#### 1-1-25
+
+* storing data in database for preventing requesting same urls multiple times

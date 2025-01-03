@@ -1,7 +1,10 @@
 from datetime import datetime
 import random
 import geopandas as gpd
-from shapely.geometry import LineString, MultiLineString, Polygon, shape
+from shapely.geometry import LineString, MultiLineString, Polygon, shape, Point
+from functools import partial
+from shapely.ops import transform
+import pyproj
 import h3
 from geopy.geocoders import Nominatim
 import pandas as pd
@@ -38,6 +41,7 @@ class GeoDataHandler:
                 'Flat 2': {'plz': '12557'},
                 'Flat 3': {'street': 'Karl-Marx-Allee', 'streetnumber': '1', 'plz': '10178'},
                 'Flat 4': {'street': 'Jungfernstieg', 'plz': '12207'},
+                'Flat 5': {'plz': '12557'},
             }
         }
         
@@ -53,12 +57,52 @@ class GeoDataHandler:
         # geo shape data
         self.GEO_DATA_STREETS = gpd.read_file("flask-react-app/backend/data/streets/Detailnetz-Strassenabschnitte.shp").to_crs(epsg=4326)
         self.GEO_DATA_PLZ = gpd.read_file("flask-react-app/backend/data/PLZ/plz.shp").to_crs(epsg=4326)
+        self.GEO_DATA_OPNV = gpd.read_file("flask-react-app/backend/data/OPNV/Strecken/OPNV Bahnstrecken.shp").to_crs(epsg=4326)
+        self.GEO_DATA_OPNV = self.GEO_DATA_OPNV.query('Bahn_Typ_k not in ["T", "B", "R"]')
+        self.GEO_DATA_OPNV_STOPS = gpd.read_file("flask-react-app/backend/data/OPNV/Stationen/OPNV Stationen.shp").to_crs(epsg=4326)
+        self.GEO_DATA_OPNV_STOPS = self.GEO_DATA_OPNV_STOPS.query('Bahn_Typ_k not in ["T", "B", "R"]')
+        self.GEO_DATA_OPNV_STOPS = (self.GEO_DATA_OPNV_STOPS
+            .to_crs(epsg=25833)  # Project to meters (Berlin)
+            .assign(geometry=lambda x: x.geometry.buffer(50, resolution=64))  # 100m radius, 32 segments
+            .to_crs(epsg=4326)  # Back to WGS84
+        )
 
         self.geolocator = Nominatim(user_agent="flat-location-rater")
 
-        self.MAP_DATA['flat_positions'] = self.get_coordinates(self.MAP_DATA['flat_positions'])
+        self.MAP_DATA['flat_positions'] = self.get_coordinates(
+            self.aggregate_identical_flats(self.MAP_DATA['flat_positions'])
+            )
+        # print(pd.DataFrame.from_dict(self.MAP_DATA['flat_positions'], orient='index'))
 
         self.TRAVEL_TIME_DATA = self.get_travel_time()
+
+    def aggregate_identical_flats(self, flat_positions):
+        flats_to_delete = set()
+        new_entries = {}
+        
+        # Compare all pairs
+        for key1, val1 in flat_positions.items():
+            if key1 in flats_to_delete:
+                continue
+            for key2, val2 in flat_positions.items():
+                if key1 >= key2 or key2 in flats_to_delete:
+                    continue
+                if val1 == val2:
+                    # Create combined entry
+                    new_key = f"{key1}+{key2}"
+                    new_entries[new_key] = val1
+                    flats_to_delete.add(key1)
+                    flats_to_delete.add(key2)
+        
+        # Remove old entries and add new ones
+        for key in flats_to_delete:
+            del flat_positions[key]
+        flat_positions.update(new_entries)
+        
+        return flat_positions
+
+    def get_opnv_data(self):
+        return(pd.concat([self.GEO_DATA_OPNV, self.GEO_DATA_OPNV_STOPS]).__geo_interface__)
 
     def get_street_geometry(self, street, plz):
         plz_shape = self.GEO_DATA_PLZ.query('plz == @plz')['geometry']
@@ -136,8 +180,12 @@ class GeoDataHandler:
         return(df_travel_times)
     
     def get_aggregated_travel_time(self):
-        df_travel_times_aggregated = self.TRAVEL_TIME_DATA.groupby('flat').agg({'seconds': ['sum' ,'median', 'std']})
-        return(df_travel_times_aggregated)
+        df = self.TRAVEL_TIME_DATA.groupby(['flat', 'geojson_hex'], as_index=False).agg({'seconds': ['sum']})
+        df.columns = np.where(df.columns.get_level_values(1) != '', df.columns.get_level_values(1), df.columns.get_level_values(0))
+        # df = df.groupby('flat', as_index=False).agg({'sum': ['median', 'std']})
+        # df.columns = np.where(df.columns.get_level_values(1) != '', df.columns.get_level_values(1), df.columns.get_level_values(0))
+        print(df)
+        return(df.to_dict(orient='records'))
     
     def get_geojson(self):
         postcodes = set()
@@ -162,23 +210,14 @@ class GeoDataHandler:
     def get_hex_geojson(self):
         postcodes = set()
         geos = []
-        for flat, value in self.MAP_DATA['flat_positions'].items():
-            if not value['is_point']:
-                for geo in value['geojson']:
-                    if geo['type'] == 'Polygon':
-                        if 'street' not in value and 'plz' in value:
-                            if value['plz'] not in postcodes:
-                                hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in value['geojson_hex']]
-                                for hex in hexes:
-                                    geos.append(hex)
-                                postcodes.add(value['plz'])
-                        else:
-                            print('WARNING: Should this be reached?')
-                            geos.append({"type": "Feature", "properties": {"opacity": random.random()}, "geometry": geo})
-                    elif geo['type'] in ['LineString', 'MultiLineString']:
-                        hexes = [{"type": "Feature", "properties": {"opacity": random.random()}, "geometry": h3.cells_to_geo([cell])} for cell in value['geojson_hex']]
-                        for hex in hexes:
-                            geos.append(hex)
+
+        df = self.TRAVEL_TIME_DATA[self.TRAVEL_TIME_DATA['is_point'] == 'False']
+        df = df.groupby('geojson_hex').agg({'seconds': 'sum'}).reset_index()
+        min, max = df.agg({'seconds': ['min', 'max']})['seconds']
+
+        for idx, row in df.iterrows():
+            feature = {"type": "Feature", "properties": {"opacity": (row['seconds']-min)/(max-min)}, "geometry": h3.cells_to_geo([row['geojson_hex']])}
+            geos.append(feature)
 
         feature_collection = {"type": "FeatureCollection", "features": geos}
         return(feature_collection)
@@ -235,6 +274,7 @@ class GeoDataHandler:
                         travel_time = datetime.fromisoformat(arrival)-datetime.fromisoformat(departure)
                         cursor.execute(f"INSERT INTO {self.table_name} (url, seconds) VALUES (?, ?)", (request['url'], travel_time.total_seconds()))
                     else:
-                        print(request['url'])
+                        # print(request['response'])
+                        pass
                 
                 connection.commit()

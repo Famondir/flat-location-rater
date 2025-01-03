@@ -19,6 +19,8 @@ function App() {
         flat_positions: {'Alexanderplatz': {latitude: 52.5219, longitude: 13.4133}}
     });
     const [geoData, setGeoData] = useState(null);
+    const [opnvData, setOpnvData] = useState(null);
+    const [aggTravelTimeData, setAggTravelTimeData] = useState(null);
 
     useEffect(() => {
         socket.emit('/api/connect');
@@ -26,14 +28,24 @@ function App() {
         // Initial data fetch
         socket.emit('/api/get-map-data');
         socket.emit('/api/get-geo-data');
+        // socket.emit('/api/get-opnv-data');
+        socket.emit('/api/get-aggregated-travel-time-data');
 
         socket.on('map_data', (data) => {
             setMapData(data);
-            console.log(data);
         });
 
         socket.on('geo_data', (data) => {
             setGeoData(data);
+        });
+
+        socket.on('opnv_data', (data) => {
+            setOpnvData(data);
+        });
+
+        socket.on('aggregated_travel_time_data', (data) => {
+            console.log(data);
+            setAggTravelTimeData(data);
         });
 
     }, []);
@@ -43,7 +55,12 @@ function App() {
             case 'about':
                 return <About />;
             case 'flat-distance':
-                return <FlatDistanceOverview mapData={mapData} geoData={geoData} />;
+                return <FlatDistanceOverview 
+                    mapData={mapData} 
+                    geoData={geoData} 
+                    opnvData= {opnvData}
+                    travelTimeData={aggTravelTimeData}  
+                />;
         };
     };
 
