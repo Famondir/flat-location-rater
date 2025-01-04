@@ -1,13 +1,14 @@
 import {socket} from "./components/socket";
 import React, { useState, useEffect } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Container, Navbar, Nav, Row, Col } from 'react-bootstrap';
+import { Container, Navbar, Nav, Row, Col, Button } from 'react-bootstrap';
 import FlatDistanceOverview from './components/FlatDistanceOverview';
 import Sidebar from './components/Sidebar';
 import { Map } from 'react-bootstrap-icons';
 import About from './components/About';
 import SetFlatLocations from "./components/SetFlatLocations";
 import './styles/App.css';
+import { List } from 'react-bootstrap-icons';
 
 function App() {
     const [view, setView] = useState('flat-distance');
@@ -20,7 +21,8 @@ function App() {
     const [geoData, setGeoData] = useState(null);
     const [opnvData, setOpnvData] = useState(null);
     const [aggTravelTimeData, setAggTravelTimeData] = useState(null);
-
+    const [sidebarVisible, setSidebarVisible] = useState(true);
+    
     useEffect(() => {
         socket.emit('/api/connect');
 
@@ -80,11 +82,20 @@ function App() {
                 </Container>
             </Navbar>
             <Container fluid>
+                <Button 
+                    variant="outline-light" 
+                    className={`me-2 sidebar-toggle ${sidebarVisible ? 'show' : 'hide'}`}
+                    onClick={() => setSidebarVisible(!sidebarVisible)}
+                >
+                    <List />
+                </Button>
                 <Row>
-                    <Col xs={2} id="sidebar-wrapper">
+                    <Col xs={sidebarVisible ? 2 : 0} id="sidebar-wrapper"
+                        className={`sidebar-nav ${sidebarVisible ? 'show' : 'hide'}`}
+                    >
                         <Sidebar  setView={setView} />
                     </Col>
-                    <Col xs={10} className='mt-2'>
+                    <Col xs={sidebarVisible ? 10 : 12} className='mt-2'>
                         {renderContent()}
                     </Col>
                 </Row>

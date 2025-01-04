@@ -6,7 +6,7 @@ const Sidebar = ({ setView }) => {
 
     return (
         <>
-            <Nav className="d-none d-md-block bg-light sidebar"
+            <Nav className="d-block bg-light sidebar"
             activeKey="/home"
             onSelect={selectedKey => setView(selectedKey)}
             >
