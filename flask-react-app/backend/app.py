@@ -7,7 +7,6 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 GEO_DATA = GeoDataHandler()
-print(GEO_DATA.get_aggregated_travel_time())
 
 @app.route('/')
 def index():
@@ -48,6 +47,16 @@ def get_aggregated_travel_time_data():
 def get_flat_locations():
     print('/api/get-flat-locations')
     socketio.emit('flat_locations', GEO_DATA.get_flat_locations())
+
+@socketio.on('/api/delete-flat')
+def delete_flat(flat):
+    print('/api/delete-flat')
+    GEO_DATA.delete_flat(flat)
+    socketio.emit('flat_locations', GEO_DATA.get_flat_locations())
+    socketio.emit('map_data', GEO_DATA.get_map_data())
+    socketio.emit('aggregated_travel_time_data', GEO_DATA.get_aggregated_travel_time())
+    feature_collection = GEO_DATA.get_geojson()
+    socketio.emit('geo_data', feature_collection)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)

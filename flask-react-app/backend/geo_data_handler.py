@@ -178,6 +178,11 @@ class GeoDataHandler:
     
     def get_flat_locations(self):
         return self.MAP_DATA['flat_positions']
+    
+    def delete_flat(self, flat):
+        del self.MAP_DATA['flat_positions'][flat['name']]
+        self.TRAVEL_TIME_DATA = self.get_travel_time()
+        return
 
     def get_aggregated_travel_time(self):
         df = (
