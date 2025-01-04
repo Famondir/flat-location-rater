@@ -176,6 +176,9 @@ class GeoDataHandler:
 
         return(df_travel_times)
     
+    def get_flat_locations(self):
+        return self.MAP_DATA['flat_positions']
+
     def get_aggregated_travel_time(self):
         df = (
             self.TRAVEL_TIME_DATA
@@ -183,9 +186,9 @@ class GeoDataHandler:
             .agg({'seconds': ['sum']})
             .pipe(lambda x: x.set_axis(['flat', 'geojson_hex', 'sum'], axis=1))
             .groupby('flat', as_index=False)
-            .agg({'sum': ['median', 'std']})
-            .pipe(lambda x: x.set_axis(['flat', 'median', 'std'], axis=1))
-            # .pipe(lambda x: x.sort_values('median', ascending=True))
+            .agg({'sum': ['median', 'min', 'std']})
+            .pipe(lambda x: x.set_axis(['flat', 'median', 'min', 'std'], axis=1))
+            .pipe(lambda x: x.sort_values('median', ascending=True))
             .fillna(0)
         )
         return(df.to_dict(orient='records'))

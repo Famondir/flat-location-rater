@@ -44,5 +44,10 @@ def get_aggregated_travel_time_data():
     print('GET /api/get-aggregated-travel-time-data')
     socketio.emit('aggregated_travel_time_data', GEO_DATA.get_aggregated_travel_time())
 
+@socketio.on('/api/get-flat-locations')
+def get_flat_locations():
+    print('/api/get-flat-locations')
+    socketio.emit('flat_locations', GEO_DATA.get_flat_locations())
+
 if __name__ == '__main__':
     socketio.run(app, debug=True)

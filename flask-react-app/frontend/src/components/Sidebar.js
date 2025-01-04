@@ -15,10 +15,10 @@ const Sidebar = ({ setView }) => {
                 <Nav.Link eventKey="flat-distance">Overview</Nav.Link>
             </Nav.Item>
             <Nav.Item>
-                <Nav.Link eventKey="link-1">Set POI</Nav.Link>
+                <Nav.Link eventKey="poi-location">Set POI</Nav.Link>
             </Nav.Item>
             <Nav.Item>
-                <Nav.Link eventKey="link-2">Set flat locations</Nav.Link>
+                <Nav.Link eventKey="flat-location">Set flat locations</Nav.Link>
             </Nav.Item>
             <Nav.Item>
                 <Nav.Link eventKey="disabled" disabled>

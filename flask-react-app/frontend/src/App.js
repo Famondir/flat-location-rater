@@ -6,6 +6,7 @@ import FlatDistanceOverview from './components/FlatDistanceOverview';
 import Sidebar from './components/Sidebar';
 import { Map } from 'react-bootstrap-icons';
 import About from './components/About';
+import SetFlatLocations from "./components/SetFlatLocations";
 import './styles/App.css';
 
 function App() {
@@ -54,12 +55,13 @@ function App() {
                 return <About />;
             case 'flat-distance':
                 return <FlatDistanceOverview 
-                    socket = {socket}
                     mapData={mapData} 
                     geoData={geoData} 
                     opnvData= {opnvData}
                     aggTravelTimeData={aggTravelTimeData}  
                 />;
+            case 'flat-location':
+                return <SetFlatLocations />;
         };
     };
 

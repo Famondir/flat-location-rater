@@ -75,6 +75,12 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
         format: row => formatSeconds(row.median)
     },
     {
+        name: 'Min',
+        selector: row => row.min,
+        sortable: true,
+        format: row => formatSeconds(row.min)
+    },
+    {
         name: 'Std Dev',
         selector: row => row.std,
         sortable: true,
@@ -84,7 +90,7 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
     return (
         <div>
             <Row>
-                {aggTravelTimeData && (<Col xl={4}>
+                {aggTravelTimeData && (<Col xxl={6}>
                     <Card className='mb-3'>
                         <CardHeader>
                             <Card.Title>Weekly Travel Time</Card.Title>
@@ -115,14 +121,17 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
                         </Card.Body>
                     </Card>
                 </Col>)}
-                <Col xl={8}>
+                <Col xxl={6}>
                     <Card className='mb-3'>
                         <CardHeader>
                             <Card.Title>Flat Distance Overview</Card.Title>
                         </CardHeader>
                         <Card.Body>
                             <div style={{ height: '600px' }}>
-                                <MapContainer center={mapData.center} zoom={mapData.zoom} scrollWheelZoom={false}>
+                                <MapContainer 
+                                    center={mapData.center} 
+                                    zoom={mapData.zoom} 
+                                    scrollWheelZoom={false}>
                                     <TileLayer
                                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                     // url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
