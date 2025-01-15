@@ -11,6 +11,7 @@ import jmespath
 import json
 import sqlite3
 from contextlib import closing
+import re
 
 def get_time_string(total_seconds):
     hours = total_seconds // 3600
@@ -23,6 +24,11 @@ class GeoDataHandler:
         # Define database name and table schema
         self.db_name = "flask-react-app/backend/flat_location_rater.db"
         self.table_name = "url_travel_time"
+        
+        self.fredy_db_path = "C:/Users/schae/OneDrive - Berliner Hochschule für Technik/Data Science/3. Semester/Urban Technologies/db/listings.db"
+        self.fredy_table_name = "listing"
+        
+        fredy_flats = self.get_flats_from_fredy()
 
         # Initial map data
         self.MAP_DATA = {
@@ -41,6 +47,21 @@ class GeoDataHandler:
                 'Flat 5': {'plz': '12557'},
             }
         }
+        
+        flat_number = len(self.MAP_DATA['flat_positions']) + 1
+
+        for _, row in fredy_flats.iterrows():
+            if row['plz'] and row['street'] and row['streetnumber']:
+                dictionary = dict()
+                dictionary['plz'] = row['plz']
+                if row['street'] != '':
+                    print(row['street'])
+                    # dictionary['street'] = row['street']
+                """
+                if row['streetnumber'] != '':
+                    dictionary['streetnumber'] = row['streetnumber'] """
+                self.MAP_DATA['flat_positions'][f'Flat {flat_number}'] = dictionary
+                flat_number += 1
         
         # Initial route data
         self.ROUTE_DATA = {
@@ -289,3 +310,15 @@ class GeoDataHandler:
                         pass
                 
                 connection.commit()
+                
+    def get_flats_from_fredy(self, number_of_flats = 5):
+        with closing(sqlite3.connect(self.fredy_db_path)) as connection:
+            with closing(connection.cursor()) as cursor:
+                
+                df = pd.read_sql_query(f'select * from {self.fredy_table_name}', connection).tail(number_of_flats)
+                df['plz'] = df['address'].transform(lambda x: re.search("[0-9]{5}", x)[0])
+                df['street'] = df['address'].transform(lambda x: (x.replace('Berlin', '').split(','))[0] if x.count(',') == 2 else '')
+                df['streetnumber'] = df['street'].transform(lambda x: re.search(r'\d+', x).group() if re.search(r'\d+', x) else '')
+                df['street'] = df['street'].transform(lambda x: re.sub(r'\d+', '', x).strip())
+        
+                return(df[['plz', 'street', 'streetnumber']])
