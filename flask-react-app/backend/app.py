@@ -59,4 +59,4 @@ def delete_flat(flat):
     socketio.emit('geo_data', feature_collection)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, port=5001)
