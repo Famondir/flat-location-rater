@@ -12,6 +12,7 @@ import json
 import sqlite3
 from contextlib import closing
 import re
+import time
 
 def get_time_string(total_seconds):
     hours = total_seconds // 3600
@@ -24,11 +25,15 @@ class GeoDataHandler:
         # Define database name and table schema
         self.db_name = "flask-react-app/backend/flat_location_rater.db"
         self.table_name = "url_travel_time"
+        self.coord_table_name = "address_coordinates"
+
+        self.initiate_database()
         
+        # self.fredy_db_path = "C:/Users/schae/OneDrive - Berliner Hochschule für Technik/Data Science/3. Semester/Urban Technologies/db/listings.db"
         self.fredy_db_path = "C:/Users/Simon/Documents/GitHub/fredy/db/listings.db"
         self.fredy_table_name = "listing"
         
-        fredy_flats = self.get_flats_from_fredy()
+        fredy_flats = self.get_flats_from_fredy(15)
 
         # Initial map data
         self.MAP_DATA = {
@@ -55,11 +60,9 @@ class GeoDataHandler:
                 dictionary = dict()
                 dictionary['plz'] = row['plz']
                 if row['street'] != '':
-                    print(row['street'])
-                    # dictionary['street'] = row['street']
-                """
+                    dictionary['street'] = row['street']
                 if row['streetnumber'] != '':
-                    dictionary['streetnumber'] = row['streetnumber'] """
+                    dictionary['streetnumber'] = row['streetnumber']
                 self.MAP_DATA['flat_positions'][f'Flat {flat_number}'] = dictionary
                 flat_number += 1
         
@@ -130,24 +133,50 @@ class GeoDataHandler:
         return [street_geometry.__geo_interface__]
 
     def get_coordinates(self, data):
+        df_coordinates = self.retriev_stored_coordinates()
+        # print(df_coordinates)
+    
         for key, value in data.items():
             if 'latitude' in value and 'longitude' in value:
                 data[key]['is_point'] = True
             else:
+                street = ''
+                streetnumber = ''
+                plz = ''
+                latitude = 0
+                longitude = 0
+
                 if 'street' in value and 'streetnumber' in value and 'plz' in value:
-                    address = {'postalcode': value['plz'], 'country': 'Germany', 'street': value['street']+' '+value['streetnumber']}
+                    street = value['street']
+                    streetnumber = value['streetnumber']
+                    plz = value['plz']
+                    address = {'postalcode': plz, 'country': 'Germany', 'street': street+' '+streetnumber}
                     data[key]['is_point'] = True
                 elif 'street' in value and 'streetnumber' not in value and 'plz' in value:
-                    address = {'postalcode': value['plz'], 'country': 'Germany', 'street': value['street']}
+                    street = value['street']
+                    plz = value['plz']
+                    address = {'postalcode': plz, 'country': 'Germany', 'street': street}
                     data[key]['is_point'] = False
                 elif 'street' not in value and 'plz' in value:
-                    address = {'postalcode': value['plz'], 'country': 'Germany'}
+                    plz = value['plz']
+                    address = {'postalcode': plz, 'country': 'Germany'}
                     data[key]['is_point'] = False
                 
-                location = [self.geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
+                # location = [self.geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
 
-                data[key]['latitude'] = location[0].latitude
-                data[key]['longitude'] = location[0].longitude
+                result = df_coordinates.query('street == @street and streetnumber == @streetnumber and plz == @plz')
+                if len(result) > 0:
+                    latitude = result['latitude'].values[0]
+                    longitude = result['longitude'].values[0]
+                else:
+                    location = [self.geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
+                    latitude = location[0].latitude
+                    longitude = location[0].longitude
+                    self.store_adress_coordinate_pair((street, streetnumber, plz, latitude, longitude))
+                    time.sleep(1.5)
+
+                data[key]['latitude'] = latitude
+                data[key]['longitude'] = longitude
                 if 'street' in value and 'streetnumber' not in value and 'plz' in value:
                     geo = self.get_street_geometry(value['street'], value['plz'])
                     data[key]['geojson'] = geo
@@ -159,7 +188,8 @@ class GeoDataHandler:
                     data[key]['geojson_hex'] = h3.geo_to_cells(geo, res=9)
                     data[key]['geojson_hex_coordinates'] = [h3.cell_to_latlng(hex) for hex in data[key]['geojson_hex']]
                 else:
-                    data[key]['geojson'] = [loc.raw['geojson'] for loc in location]
+                    point = {'type': 'Point', 'coordinates': [longitude, latitude]}
+                    data[key]['geojson'] = [point]
         return data
     
     def get_map_data(self):
@@ -240,7 +270,7 @@ class GeoDataHandler:
         return(feature_collection)
     
     def get_hex_geojson(self, flat):
-        postcodes = set()
+        # postcodes = set()
         geos = []
 
         df = self.TRAVEL_TIME_DATA[self.TRAVEL_TIME_DATA['is_point'] == 'False']
@@ -278,7 +308,29 @@ class GeoDataHandler:
                     seconds INTEGER
                 )
                 """)
+
+                cursor.execute(f"""
+                CREATE TABLE IF NOT EXISTS {self.coord_table_name} (
+                    street TEXT,
+                    streetnumber TEXT,
+                    plz TEXT,
+                    latitude INTEGER,
+                    longitude INTEGER
+                )
+                """)
                 connection.commit()
+    
+    def store_adress_coordinate_pair(self, data):
+        with closing(sqlite3.connect(self.db_name)) as connection:
+            with closing(connection.cursor()) as cursor:
+                # print(data)
+                cursor.execute(f"INSERT INTO {self.coord_table_name} (street, streetnumber, plz, latitude, longitude) VALUES (?, ?, ?, ?, ?)", data)
+                connection.commit()
+
+    def retriev_stored_coordinates(self):
+        with closing(sqlite3.connect(self.db_name)) as connection:
+            # Get existing addresses and coordinates from database
+            return(pd.read_sql_query(f'select * from {self.coord_table_name}', connection))
 
     def retrieve_stored_urls(self):
         with closing(sqlite3.connect(self.db_name)) as connection:
@@ -319,6 +371,9 @@ class GeoDataHandler:
                 df['plz'] = df['address'].transform(lambda x: re.search("[0-9]{5}", x)[0])
                 df['street'] = df['address'].transform(lambda x: (x.replace('Berlin', '').split(','))[0] if x.count(',') == 2 else '')
                 df['streetnumber'] = df['street'].transform(lambda x: re.search(r'\d+', x).group() if re.search(r'\d+', x) else '')
-                df['street'] = df['street'].transform(lambda x: re.sub(r'\d+', '', x).strip())
+                df['street'] = df['street'].transform(lambda x: re.sub(r'\d+', '', x).strip().replace('str.', 'straße').replace('Str.', 'Straße'))
         
                 return(df[['plz', 'street', 'streetnumber']])
+            
+if __name__ == "__main__":
+    GEO_DATA = GeoDataHandler()

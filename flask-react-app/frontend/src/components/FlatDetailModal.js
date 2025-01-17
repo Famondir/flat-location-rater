@@ -182,7 +182,7 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
                                         style={{ height: '100%', width: '100%' }}
                                     >
                                         <TileLayer
-                                            url="http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+                                            url="https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png"
                                         />
                                         <Marker position={[flatData?.latitude, flatData?.longitude]}>
                                             <Popup>{flatData?.name}</Popup>
