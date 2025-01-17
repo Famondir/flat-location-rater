@@ -1,19 +1,35 @@
 import asyncio
 from pprint import pprint
-from aiohttp import ClientSession
 import time
+from aiohttp import ClientSession, ClientConnectorError, ClientTimeout
+import logging
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 class AsyncRequest:
     def __init__(self, urls: list):
         self.urls = urls
         self.queue = asyncio.Queue()
         self.results = []
+        self.timeout = ClientTimeout(total=10)
         
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
     async def send_request(self, url):
-        async with ClientSession() as session:
-            async with session.get(url) as response:
-                result = {"response": await response.text(), "url": url}
-                await self.queue.put(result)
+        try:
+            async with ClientSession(timeout=self.timeout) as session:
+                async with session.get(url) as response:
+                    result = {"response": await response.text(), "url": url}
+                    await self.queue.put(result)
+        except ClientConnectorError as e:
+            # logging.error(f"Connection error for {url}: {str(e)}")
+            result = {"response": None, "url": url, "error": str(e)}
+            await self.queue.put(result)
+        except asyncio.TimeoutError as e:
+            # logging.error(f"Timeout for {url}: {str(e)}")
+            result = {"response": None, "url": url, "error": "timeout"}
+            await self.queue.put(result)
 
     async def send_requests(self): 
         async with asyncio.TaskGroup() as group:

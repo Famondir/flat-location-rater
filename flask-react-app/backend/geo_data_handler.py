@@ -12,7 +12,9 @@ import json
 import sqlite3
 from contextlib import closing
 import re
+from geopy.exc import GeocoderUnavailable, GeocoderTimedOut
 import time
+import logging
 
 def get_time_string(total_seconds):
     hours = total_seconds // 3600
@@ -33,7 +35,8 @@ class GeoDataHandler:
         self.fredy_db_path = "C:/Users/Simon/Documents/GitHub/fredy/db/listings.db"
         self.fredy_table_name = "listing"
         
-        fredy_flats = self.get_flats_from_fredy(15)
+        fredy_flats = self.get_flats_from_fredy(10)
+        # print(fredy_flats)
 
         # Initial map data
         self.MAP_DATA = {
@@ -56,7 +59,7 @@ class GeoDataHandler:
         flat_number = len(self.MAP_DATA['flat_positions']) + 1
 
         for _, row in fredy_flats.iterrows():
-            if row['plz'] and row['street'] and row['streetnumber']:
+            if row['plz'] != None and row['street'] != None and row['streetnumber'] != None:
                 dictionary = dict()
                 dictionary['plz'] = row['plz']
                 if row['street'] != '':
@@ -65,6 +68,10 @@ class GeoDataHandler:
                     dictionary['streetnumber'] = row['streetnumber']
                 self.MAP_DATA['flat_positions'][f'Flat {flat_number}'] = dictionary
                 flat_number += 1
+            else:
+                print(row)
+
+        # print(self.MAP_DATA['flat_positions'])
         
         # Initial route data
         self.ROUTE_DATA = {
@@ -131,6 +138,23 @@ class GeoDataHandler:
         selected_street_shapes = [y.iloc[0] for y in [x.intersection(plz_shape) for x in street_shapes] if not y.iloc[0].is_empty]
         street_geometry = MultiLineString(selected_street_shapes)
         return [street_geometry.__geo_interface__]
+    
+    def geocode_with_retry(self, address, max_retries=3, timeout=3):
+        for attempt in range(max_retries):
+            try:
+                return self.geolocator.geocode(
+                    address, 
+                    namedetails=True, 
+                    geometry='geojson', 
+                    exactly_one=True,
+                    timeout=timeout
+                )
+            except (GeocoderUnavailable, GeocoderTimedOut) as e:
+                if attempt == max_retries - 1:
+                    logging.error(f"Geocoding failed after {max_retries} attempts: {str(e)}")
+                    return None
+                time.sleep(2 ** attempt)  # Exponential backoff
+        return None
 
     def get_coordinates(self, data):
         df_coordinates = self.retriev_stored_coordinates()
@@ -169,7 +193,11 @@ class GeoDataHandler:
                     latitude = result['latitude'].values[0]
                     longitude = result['longitude'].values[0]
                 else:
-                    location = [self.geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
+                    # location = [self.geolocator.geocode(address, namedetails=True, geometry='geojson', exactly_one=True)]
+                    location = [self.geocode_with_retry(address)]
+                    if location[0] is None:
+                        return None
+
                     latitude = location[0].latitude
                     longitude = location[0].longitude
                     self.store_adress_coordinate_pair((street, streetnumber, plz, latitude, longitude))
@@ -348,19 +376,25 @@ class GeoDataHandler:
     def store_travel_time(self, request_results):
         with closing(sqlite3.connect(self.db_name)) as connection:
             with closing(connection.cursor()) as cursor:
+                count_none = 0
                 for request in request_results:
-                    data = json.loads(request['response'])
+                    # print(request['response'])
+                    if request['response'] is not None:
+                        data = json.loads(request['response'])
 
-                    arrival = jmespath.search('journeys[0].legs[-1].arrival', data)
-                    departure = jmespath.search('journeys[0].legs[0].departure', data)
-                    
-                    if arrival is not None:
-                        travel_time = datetime.fromisoformat(arrival)-datetime.fromisoformat(departure)
-                        cursor.execute(f"INSERT INTO {self.table_name} (url, seconds) VALUES (?, ?)", (request['url'], travel_time.total_seconds()))
+                        arrival = jmespath.search('journeys[0].legs[-1].arrival', data)
+                        departure = jmespath.search('journeys[0].legs[0].departure', data)
+                        
+                        if arrival is not None:
+                            travel_time = datetime.fromisoformat(arrival)-datetime.fromisoformat(departure)
+                            cursor.execute(f"INSERT INTO {self.table_name} (url, seconds) VALUES (?, ?)", (request['url'], travel_time.total_seconds()))
+                        else:
+                            # print(request['response'])
+                            count_none += 1
                     else:
-                        # print(request['response'])
-                        pass
-                
+                        count_none += 1
+
+                print(f"There have been {count_none} None responses from the server.")
                 connection.commit()
                 
     def get_flats_from_fredy(self, number_of_flats = 5):
