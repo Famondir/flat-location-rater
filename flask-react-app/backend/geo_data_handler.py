@@ -25,7 +25,7 @@ class GeoDataHandler:
         self.db_name = "flask-react-app/backend/flat_location_rater.db"
         self.table_name = "url_travel_time"
         
-        self.fredy_db_path = "C:/Users/schae/OneDrive - Berliner Hochschule für Technik/Data Science/3. Semester/Urban Technologies/db/listings.db"
+        self.fredy_db_path = "C:/Users/Simon/Documents/GitHub/fredy/db/listings.db"
         self.fredy_table_name = "listing"
         
         fredy_flats = self.get_flats_from_fredy()
