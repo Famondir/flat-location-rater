@@ -34,10 +34,8 @@ class GeoDataHandler:
         # self.fredy_db_path = "C:/Users/schae/OneDrive - Berliner Hochschule für Technik/Data Science/3. Semester/Urban Technologies/db/listings.db"
         self.fredy_db_path = "C:/Users/Simon/Documents/GitHub/fredy/db/listings.db"
         self.fredy_table_name = "listing"
+        self.fredy_flats = pd.DataFrame()
         
-        fredy_flats = self.get_flats_from_fredy(10)
-        # print(fredy_flats)
-
         # Initial map data
         self.MAP_DATA = {
             'center': [52.510885, 13.3989367],  # Berlin
@@ -56,23 +54,8 @@ class GeoDataHandler:
             }
         }
         
-        flat_number = len(self.MAP_DATA['flat_positions']) + 1
+        self.flat_number = len(self.MAP_DATA['flat_positions']) + 1
 
-        for _, row in fredy_flats.iterrows():
-            if row['plz'] != None and row['street'] != None and row['streetnumber'] != None:
-                dictionary = dict()
-                dictionary['plz'] = row['plz']
-                if row['street'] != '':
-                    dictionary['street'] = row['street']
-                if row['streetnumber'] != '':
-                    dictionary['streetnumber'] = row['streetnumber']
-                self.MAP_DATA['flat_positions'][f'Flat {flat_number}'] = dictionary
-                flat_number += 1
-            else:
-                print(row)
-
-        # print(self.MAP_DATA['flat_positions'])
-        
         # Initial route data
         self.ROUTE_DATA = {
             1: {'poi': 'HTW Berlin', 'day': 'Monday', 'time': '09:00', 'direction': 'to'},
@@ -97,10 +80,34 @@ class GeoDataHandler:
 
         self.geolocator = Nominatim(user_agent="flat-location-rater")
 
-        self.MAP_DATA['flat_positions'] = self.get_coordinates(
-            self.aggregate_identical_flats(self.MAP_DATA['flat_positions'])
-            )
+        self.set_coordinates_and_travel_time_for_map_data()
         # print(pd.DataFrame.from_dict(self.MAP_DATA['flat_positions'], orient='index'))
+
+    def load_flats_from_fredy(self, number_of_flats = 5):
+        new_flats_df = self.get_flats_from_fredy(number_of_flats)
+        new_flats_df = new_flats_df.drop(self.fredy_flats.index, errors='ignore', axis=0)
+        # print(new_flats_df)
+
+        for _, row in new_flats_df.iterrows():
+            if row['plz'] != None and row['street'] != None and row['streetnumber'] != None:
+                dictionary = dict()
+                dictionary['plz'] = row['plz']
+                if row['street'] != '':
+                    dictionary['street'] = row['street']
+                if row['streetnumber'] != '':
+                    dictionary['streetnumber'] = row['streetnumber']
+                self.MAP_DATA['flat_positions'][f'Flat {self.flat_number}'] = dictionary
+                self.flat_number += 1
+            else:
+                print(row)
+        
+        self.fredy_flats = pd.concat([self.fredy_flats, new_flats_df])
+        self.set_coordinates_and_travel_time_for_map_data()
+
+    def set_coordinates_and_travel_time_for_map_data(self):
+        self.MAP_DATA['flat_positions'] = self.get_coordinates(
+        self.aggregate_identical_flats(self.MAP_DATA['flat_positions'])
+        )
 
         self.TRAVEL_TIME_DATA = self.get_travel_time()
 
@@ -161,7 +168,7 @@ class GeoDataHandler:
         # print(df_coordinates)
     
         for key, value in data.items():
-            if 'latitude' in value and 'longitude' in value:
+            if 'latitude' in value and 'longitude' in value and 'plz' not in value:
                 data[key]['is_point'] = True
             else:
                 street = ''

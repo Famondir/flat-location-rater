@@ -52,6 +52,15 @@ def get_flat_locations():
 def delete_flat(flat):
     print('/api/delete-flat')
     GEO_DATA.delete_flat(flat)
+    refresh_flat_data()
+
+@socketio.on('/api/load-fredy-flats')
+def load_fredy_flats(data):
+    print('/api/load-fredy-flats')
+    GEO_DATA.load_flats_from_fredy(data['number_of_flats'])
+    refresh_flat_data()
+
+def refresh_flat_data():
     socketio.emit('flat_locations', GEO_DATA.get_flat_locations())
     socketio.emit('map_data', GEO_DATA.get_map_data())
     socketio.emit('aggregated_travel_time_data', GEO_DATA.get_aggregated_travel_time())
