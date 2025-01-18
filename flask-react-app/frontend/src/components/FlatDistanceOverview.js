@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Button, Card, Row, Col, CardHeader, CardText } from 'react-bootstrap';
+import { Button, Card, Row, Col, CardHeader, CardText, Form } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
 import L from 'leaflet';
 import { MapContainer, TileLayer, Marker, Popup, Pane, GeoJSON } from 'react-leaflet';
@@ -16,6 +16,7 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
     const [selectedFlat, setSelectedFlat] = useState(null);
     const [hoveredFlat, setHoveredFlat] = useState(null);
     const markersRef = useRef({});
+    const [showOpnv, setShowOpnv] = useState(false);
 
     const customStyles = {
         rows: {
@@ -184,16 +185,16 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
                                                     <Popup>{name}</Popup>
                                                 </Marker>
                                     ))))}
-                                    {<GeoJSON 
+                                    {showOpnv && opnvData && (<GeoJSON 
                                         data={opnvData} 
                                         key={hash(opnvData)} 
                                         style={{
-                                            color: 'lightsalmon',
-                                            fillColor: "lightsalmon",
+                                            color: 'rgb(255, 170, 255)',
+                                            fillColor: "rgb(255, 170, 255)",
                                             fillOpacity: 1,
                                             weight: 2
                                         }}
-                                        />}
+                                        />)}
                                     {<GeoJSON 
                                         data={geoData} 
                                         key={hash(geoData)} 
@@ -203,6 +204,16 @@ const FlatDistanceOverview = ({ mapData, geoData, opnvData, aggTravelTimeData })
                                 </MapContainer>
                             </div>
                         </Card.Body>
+                        <Card.Footer className="d-flex justify-content-end">
+                        <Form.Check 
+                            type="checkbox"
+                            id="opnv-toggle"
+                            label="Show Public Transport"
+                            checked={showOpnv}
+                            onChange={(e) => setShowOpnv(e.target.checked)}
+                            className="mt-2"
+                        />
+                        </Card.Footer>
                     </Card>
                 </Col>
             </Row>

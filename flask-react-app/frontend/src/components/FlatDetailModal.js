@@ -142,33 +142,6 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
             <Modal.Body>
                 <Row>
                     <Col xl={6}>
-                        <Card className="mb-3">
-                            <CardHeader><Card.Title>Travel Time</Card.Title></CardHeader>
-                            <Card.Body>
-                                 {travelTimeData && (<DataTable
-                                    columns={columns}
-                                    data={travelTimeData}
-                                    pagination
-                                    paginationPerPage={5}
-                                    paginationRowsPerPageOptions={[5,10]}
-                                    highlightOnHover
-                                    responsive
-                                    customStyles={customStyles}
-                                    onRowMouseEnter={handleRowMouseEnter}
-                                    onRowMouseLeave={handleRowMouseLeave}
-                                    conditionalRowStyles={[
-                                        {
-                                            when: row => row.hex_id === hoveredHexId,
-                                            style: {
-                                                backgroundColor: 'rgba(26, 132, 214, 0.2)',
-                                            },
-                                        },
-                                    ]}
-                                />)}
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                    <Col xl={6}>
                         <Card>
                             <CardHeader><Card.Title>Location</Card.Title></CardHeader>
                             <Card.Body>
@@ -195,6 +168,33 @@ const FlatDetailModal = ({ show, onHide, flatData }) => {
                                             />}
                                     </MapContainer>
                                 </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                    <Col xl={6}>
+                        <Card className="mb-3">
+                            <CardHeader><Card.Title>Travel Time</Card.Title></CardHeader>
+                            <Card.Body>
+                                 {travelTimeData && (<DataTable
+                                    columns={columns}
+                                    data={travelTimeData}
+                                    pagination
+                                    paginationPerPage={5}
+                                    paginationRowsPerPageOptions={[5,10]}
+                                    highlightOnHover
+                                    responsive
+                                    customStyles={customStyles}
+                                    onRowMouseEnter={handleRowMouseEnter}
+                                    onRowMouseLeave={handleRowMouseLeave}
+                                    conditionalRowStyles={[
+                                        {
+                                            when: row => row.hex_id === hoveredHexId,
+                                            style: {
+                                                backgroundColor: 'rgba(26, 132, 214, 0.2)',
+                                            },
+                                        },
+                                    ]}
+                                />)}
                             </Card.Body>
                         </Card>
                     </Col>

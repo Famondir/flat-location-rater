@@ -29,7 +29,7 @@ function App() {
         // Initial data fetch
         socket.emit('/api/get-map-data');
         socket.emit('/api/get-geo-data');
-        // socket.emit('/api/get-opnv-data');
+        socket.emit('/api/get-opnv-data');
         socket.emit('/api/get-aggregated-travel-time-data');
 
         socket.on('map_data', (data) => {
