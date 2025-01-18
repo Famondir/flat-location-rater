@@ -2,7 +2,7 @@ from flask import Flask, send_from_directory
 from flask_socketio import SocketIO
 from geo_data_handler import GeoDataHandler
 
-app = Flask(__name__, static_folder='../build', static_url_path='/')
+app = Flask(__name__, static_folder='../frontend/build', static_url_path='/')
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 

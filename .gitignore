@@ -4,3 +4,4 @@
 /flask-react-app/node_modules
 /flask-react-app/backend/data
 /flask-react-app/backend/__pycache__
+/flask-react-app/frontend/build
